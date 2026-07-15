@@ -64,7 +64,7 @@ Setelah kedua server berjalan, buka browser dan akses alamat:
 ```text
 http://127.0.0.1:8080
 ```
-*(Atau `http://IP_KOMPUTER_HOST:8080` agar bisa diakses dari HP/perangkat lain dalam satu Wi-Fi).*
+*(Atau `http://IP_KOMPUTER_HOST:8080`).*
 
 ---
 
