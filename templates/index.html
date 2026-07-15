@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat, File Transfer, & Streaming Platform</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Socket.IO Client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        :root {
+            --bg-base: #09090b;
+            --bg-card: rgba(24, 24, 27, 0.75);
+            --bg-card-hover: rgba(39, 39, 42, 0.85);
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --success-hover: #059669;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --warning: #fb923c;
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --border: rgba(63, 63, 70, 0.5);
+            --border-focus: #3b82f6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-image: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 45%);
+        }
+
+        /* Glassmorphism Container */
+        .app-container {
+            width: 95vw;
+            height: 90vh;
+            max-width: 1200px;
+            max-height: 800px;
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* LAYOUT 1: LOGIN SCREEN */
+        .login-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .login-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-subtitle {
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .login-card {
+            background: rgba(39, 39, 42, 0.4);
+            border: 1px solid var(--border);
+            padding: 30px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-group {
+            width: 100%;
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(9, 9, 11, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: var(--success-hover);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 20px 0;
+        }
+
+        .status-msg {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .status-success {
+            color: var(--success);
+        }
+
+        .status-error {
+            color: var(--danger);
+        }
+
+        /* LAYOUT 2: MAIN SCREEN */
+        .main-screen {
+            display: none;
+            /* Diaktifkan lewat JS */
+            flex: 1;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* Top Navbar */
+        .top-navbar {
+            height: 60px;
+            background: rgba(24, 24, 27, 0.9);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        .user-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        /* Split Workspace */
+        .workspace {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sisi Kiri: Chat */
+        .chat-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(9, 9, 11, 0.4);
+            border-right: 1px solid var(--border);
+        }
+
+        .chat-history {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .chat-message {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            align-self: flex-start;
+            background: rgba(39, 39, 42, 0.6);
+            border: 1px solid var(--border);
+        }
+
+        .chat-message.self {
+            align-self: flex-end;
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .chat-message.system {
+            align-self: center;
+            max-width: 90%;
+            background: rgba(251, 146, 60, 0.08);
+            border-color: rgba(251, 146, 60, 0.2);
+            color: #fdba74;
+            font-style: italic;
+            font-size: 0.85rem;
+        }
+
+        .chat-message.error {
+            align-self: center;
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            font-weight: 500;
+        }
+
+        .chat-msg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            gap: 15px;
+        }
+
+        .chat-msg-sender.other {
+            color: #c084fc;
+        }
+
+        .chat-msg-sender.self {
+            color: #60a5fa;
+        }
+
+        .chat-form {
+            padding: 15px 20px;
+            background: rgba(24, 24, 27, 0.4);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Sisi Kanan: Sidebar */
+        .sidebar {
+            width: 320px;
+            background: rgba(24, 24, 27, 0.5);
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            border-left: 3px solid var(--primary);
+            padding-left: 8px;
+            margin-bottom: 5px;
+        }
+
+        .file-select-box {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .file-select-box:hover {
+            border-color: var(--primary);
+            color: var(--text-main);
+        }
+
+        /* Progress Tracker */
+        .progress-box {
+            margin-top: 5px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: #27272a;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--success);
+            transition: width 0.1s;
+        }
+
+        /* Stream Display Box (Centered Modal) */
+        .stream-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(9, 9, 11, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .stream-window-card {
+            width: 90%;
+            max-width: 640px;
+            background: #18181b;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .stream-window-header {
+            background: #27272a;
+            padding: 12px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stream-window-close {
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .stream-window-close:hover {
+            color: var(--danger);
+        }
+
+        .stream-video-view {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .stream-video-view img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Footer Status Bar */
+        .status-bar {
+            height: 30px;
+            background: rgba(18, 18, 18, 0.9);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- 1. FORM LOGIN & OTP -->
+        <div id="login-container" class="login-screen">
+            <h1 class="login-title">CHAT & STREAMING PLATFORM</h1>
+            <p class="login-subtitle">Aplikasi Pemrograman Jaringan Client-Server</p>
+
+            <div class="login-card">
+                <!-- Tab Selector -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                    <button id="tab-login" class="btn" style="flex: 1; padding: 8px; background: var(--primary); color: white;" onclick="switchAuthTab('login')">Masuk</button>
+                    <button id="tab-register" class="btn" style="flex: 1; padding: 8px; background: transparent; color: var(--text-muted);" onclick="switchAuthTab('register')">Daftar</button>
+                </div>
+
+
+
+                <!-- Input Email -->
+                <div class="form-group">
+                    <label for="email">Alamat Email</label>
+                    <input type="email" id="email" class="form-control" placeholder="nama@email.com">
+                </div>
+
+                <!-- Input Password -->
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Masukkan password">
+                </div>
+
+                <!-- Section: LOGIN ACTION -->
+                <div id="login-actions">
+                    <button id="btn-login" class="btn btn-primary" onclick="loginRequest()">Masuk ke Dashboard</button>
+                </div>
+
+                <!-- Section: REGISTER ACTION -->
+                <div id="register-actions" style="display: none;">
+                    <button id="btn-send-otp" class="btn btn-primary" onclick="registerRequest()">Daftar & Minta OTP</button>
+                    
+                    <div class="divider"></div>
+
+                    <!-- Input OTP -->
+                    <div class="form-group">
+                        <label id="lbl-otp" for="otp-code" style="opacity: 0.5;">Masukkan OTP Verifikasi Registrasi (6 Digit)</label>
+                        <input type="text" id="otp-code" class="form-control" placeholder="------" disabled maxlength="6">
+                    </div>
+
+                    <button id="btn-verify" class="btn btn-success" disabled onclick="registerVerify()"
+                        style="background: #1f2937; cursor: not-allowed; width: 100%;">
+                        Verifikasi OTP & Aktifkan Akun
+                    </button>
+                </div>
+            </div>
+
+            <div id="login-log" class="status-msg">Silakan isi detail server untuk mulai.</div>
+        </div>
+
+        <!-- 2. WORKSPACE UTAMA CHAT -->
+        <div id="main-container" class="main-screen">
+            <!-- Navbar -->
+            <div class="top-navbar">
+                <div class="nav-user">
+                    <div class="user-dot"></div>
+                    <span id="display-user">email@domain.com</span>
+                </div>
+                <button class="btn btn-danger" style="width: auto; padding: 6px 15px; font-size: 0.85rem;"
+                    onclick="logout()">Keluar</button>
+            </div>
+
+            <!-- Workspace -->
+            <div class="workspace">
+                <!-- Sisi Kiri: Chat -->
+                <div class="chat-pane">
+                    <div id="chat-box" class="chat-history">
+                        <!-- Pesan chat dimasukkan di sini secara dinamis -->
+                    </div>
+
+                    <!-- Input Chat Form -->
+                    <div class="chat-form">
+                        <input type="text" id="chat-input" class="form-control"
+                            placeholder="Ketik pesan Anda di sini..." onkeydown="if(event.key==='Enter') sendChat()">
+                        <button class="btn btn-primary" style="width: 100px;" onclick="sendChat()">Kirim</button>
+                    </div>
+                </div>
+
+                <!-- Sisi Kanan: Sidebar Fitur -->
+                <div class="sidebar">
+
+                    <!-- FITUR 1: TRANSFER FILE -->
+                    <div class="sidebar-section">
+                        <h3>Transfer File</h3>
+                        <div class="file-select-box" onclick="document.getElementById('file-input').click()">
+                            <span id="file-label">Klik untuk memilih file...</span>
+                            <input type="file" id="file-input" style="display: none;"
+                                onchange="handleFileSelected(this)">
+                        </div>
+
+
+
+                        <button id="btn-upload" class="btn btn-success" style="padding: 8px;"
+                            onclick="uploadFile()">Kirim File</button>
+                    </div>
+
+                    <!-- FITUR 1.5: DAFTAR FILE SERVER -->
+                    <div class="sidebar-section">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <h3 style="margin-bottom: 0;">File di Server</h3>
+                            <a href="#" onclick="refreshServerFiles(); return false;"
+                                style="color: var(--primary); text-decoration: none; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 4px;">🔄
+                                Refresh</a>
+                        </div>
+                        <div id="server-files-list"
+                            style="max-height: 140px; overflow-y: auto; background: rgba(9,9,11,0.4); border-radius: 8px; padding: 10px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px;">
+                            <span style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">Loading file
+                                list...</span>
+                        </div>
+                    </div>
+
+
+
+                    <!-- FITUR 3: SERVER VIDEO STREAM -->
+                    <div class="sidebar-section">
+                        <h3>Server Video Stream</h3>
+                        <div class="form-group" style="margin-bottom: 5px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label
+                                    style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Pilih
+                                    Video:</label>
+                                <a href="#" onclick="refreshServerVideos(); return false;"
+                                    style="color: var(--primary); text-decoration: none; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 4px;">🔄
+                                    Refresh</a>
+                            </div>
+                            <select id="server-video-name" class="form-control"
+                                style="padding: 10px 12px; font-size: 0.9rem; background: rgba(9, 9, 11, 0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); outline: none; width: 100%;">
+                                <option value="">Loading video list...</option>
+                            </select>
+                        </div>
+                        <button id="btn-start-server-stream" class="btn btn-primary" style="padding: 8px; width: 100%;"
+                            onclick="requestServerStream()">Request Stream</button>
+                    </div>
+
+                    <!-- STATUS & PROGRESS BAR -->
+                    <div class="sidebar-section"
+                        style="margin-top: auto; border-top: 1px solid var(--border); padding-top: 15px;">
+                        <div class="progress-box">
+                            <div class="progress-header">
+                                <span id="progress-status">Status: Idle</span>
+                                <span id="progress-percent">0%</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div id="progress-fill" class="progress-bar-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="status-bar">
+                <span>Terhubung ke Gateway HTTP/Socket.IO</span>
+                <span>Pemrograman Jaringan - Web Client Browser</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ELEMEN POPUP JENDELA VIDEO STREAMING -->
+    <div id="stream-popup" class="stream-modal-overlay">
+        <div class="stream-window-card">
+            <div class="stream-window-header">
+                <span id="stream-title">Stream dari SERVER</span>
+                <span class="stream-window-close" onclick="closeStreamPopup(true)">✖</span>
+            </div>
+            <div class="stream-video-view">
+                <img id="video-display" src="" alt="Menunggu video frame...">
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        // Setup Socket.IO Client
+        const socket = io();
+        let myEmail = null;
+        let selectedFile = null;
+        const CHUNK_SIZE = 60000;
+        let userClosedPopup = false;
+        let activeStreamSender = null;
+
+        // =========================================================================
+        // AUTHENTICATION FLOW
+        // =========================================================================
+
+        let activeAuthTab = 'login';
+
+        function switchAuthTab(tab) {
+            activeAuthTab = tab;
+            const tabLogin = document.getElementById('tab-login');
+            const tabRegister = document.getElementById('tab-register');
+            const loginActions = document.getElementById('login-actions');
+            const registerActions = document.getElementById('register-actions');
+            const logMsg = document.getElementById('login-log');
+
+            logMsg.innerText = "Silakan isi detail server untuk mulai.";
+            logMsg.className = "status-msg";
+
+            if (tab === 'login') {
+                tabLogin.style.background = 'var(--primary)';
+                tabLogin.style.color = 'white';
+                tabRegister.style.background = 'transparent';
+                tabRegister.style.color = 'var(--text-muted)';
+                
+                loginActions.style.display = 'block';
+                registerActions.style.display = 'none';
+            } else {
+                tabRegister.style.background = 'var(--primary)';
+                tabRegister.style.color = 'white';
+                tabLogin.style.background = 'transparent';
+                tabLogin.style.color = 'var(--text-muted)';
+                
+                loginActions.style.display = 'none';
+                registerActions.style.display = 'block';
+            }
+        }
+
+        function loginRequest() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!email || !password) {
+                alert("Kolom email dan password wajib diisi!");
+                return;
+            }
+
+            document.getElementById('btn-login').innerText = "Menghubungkan...";
+            document.getElementById('btn-login').disabled = true;
+
+            showLog("Mencoba masuk ke server...", "");
+
+            socket.emit('login_request', { email, password });
+        }
+
+        function registerRequest() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!email || !password) {
+                alert("Kolom email dan password wajib diisi!");
+                return;
+            }
+
+            document.getElementById('btn-send-otp').innerText = "Menghubungkan...";
+            document.getElementById('btn-send-otp').disabled = true;
+
+            showLog("Menghubungkan ke server untuk registrasi...", "");
+
+            socket.emit('register_request', { email, password });
+        }
+
+        function registerVerify() {
+            const code = document.getElementById('otp-code').value.trim();
+            if (!code) {
+                alert("Masukkan kode OTP!");
+                return;
+            }
+            document.getElementById('btn-verify').innerText = "Memverifikasi...";
+            socket.emit('register_verify', { code });
+        }
+
+        socket.on('register_otp_sent', (data) => {
+            document.getElementById('btn-send-otp').innerText = "OTP Terkirim ✅";
+            document.getElementById('btn-send-otp').style.background = "var(--success)";
+            document.getElementById('btn-send-otp').disabled = false;
+
+            // Aktifkan input OTP
+            document.getElementById('lbl-otp').style.opacity = "1";
+            document.getElementById('otp-code').disabled = false;
+            document.getElementById('btn-verify').disabled = false;
+            document.getElementById('btn-verify').style.background = "var(--success)";
+            document.getElementById('btn-verify').style.cursor = "pointer";
+            document.getElementById('otp-code').focus();
+
+            let statusText = `Kode OTP pendaftaran dikirim ke ${data.email}.`;
+            if (data.mock_otp) {
+                statusText += ` (MOCK OTP: ${data.mock_otp})`;
+                document.getElementById('otp-code').value = data.mock_otp;
+            }
+            showLog(statusText, "status-success");
+        });
+
+        socket.on('register_success', (data) => {
+            showLog(data.text, "status-success");
+            alert(data.text);
+            switchAuthTab('login');
+            document.getElementById('email').value = data.email;
+            document.getElementById('password').value = "";
+            
+            // Bersihkan form register OTP
+            document.getElementById('btn-send-otp').innerText = "Daftar & Minta OTP";
+            document.getElementById('btn-send-otp').style.background = "var(--primary)";
+            document.getElementById('otp-code').value = "";
+            document.getElementById('otp-code').disabled = true;
+            document.getElementById('btn-verify').disabled = true;
+            document.getElementById('btn-verify').style.background = "#1f2937";
+            document.getElementById('btn-verify').innerText = "Verifikasi OTP & Aktifkan Akun";
+        });
+
+        socket.on('register_verify_fail', (data) => {
+            document.getElementById('btn-verify').innerText = "Verifikasi OTP & Aktifkan Akun";
+            showLog(data.text, "status-error");
+            document.getElementById('otp-code').value = "";
+        });
+
+        socket.on('auth_fail', (data) => {
+            // Hapus saved session jika login gagal
+            sessionStorage.removeItem('saved_email');
+            sessionStorage.removeItem('saved_password');
+            document.getElementById('btn-login').innerText = "Masuk ke Dashboard";
+            document.getElementById('btn-login').disabled = false;
+            showLog(data.text, "status-error");
+        });
+
+        socket.on('error_message', (data) => {
+            document.getElementById('btn-send-otp').innerText = "Daftar & Minta OTP";
+            document.getElementById('btn-send-otp').disabled = false;
+            document.getElementById('btn-login').innerText = "Masuk ke Dashboard";
+            document.getElementById('btn-login').disabled = false;
+            showLog(data.text, "status-error");
+        });
+
+        socket.on('auth_ok', (data) => {
+            myEmail = data.email;
+            
+            // Simpan ke sessionStorage untuk auto-login saat refresh
+            const enteredPassword = document.getElementById('password').value;
+            if (enteredPassword) {
+                sessionStorage.setItem('saved_email', myEmail);
+                sessionStorage.setItem('saved_password', enteredPassword);
+            }
+
+            document.getElementById('display-user').innerText = `Terhubung: ${myEmail}`;
+            document.getElementById('login-container').style.display = "none";
+            document.getElementById('main-container').style.display = "flex";
+
+            appendMessage("SYSTEM", "Sistem", "Login berhasil! Selamat bergabung di chat server.", "system");
+            refreshServerVideos();
+            refreshServerFiles();
+        });
+
+        socket.on('connection_lost', (data) => {
+            alert(`Terputus dari server:\n${data.reason}`);
+            disconnectAll();
+        });
+
+        function disconnectAll() {
+            // Reload halaman untuk membersihkan semua variabel & state socket
+            window.location.reload();
+        }
+
+        function logout() {
+            // Hapus sessionStorage saat keluar sengaja
+            sessionStorage.removeItem('saved_email');
+            sessionStorage.removeItem('saved_password');
+            window.location.reload();
+        }
+
+        // Jalankan auto-login otomatis jika ada sesi aktif
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedEmail = sessionStorage.getItem('saved_email');
+            const savedPassword = sessionStorage.getItem('saved_password');
+            if (savedEmail && savedPassword) {
+                document.getElementById('email').value = savedEmail;
+                document.getElementById('password').value = savedPassword;
+                loginRequest();
+            }
+        });
+
+        // =========================================================================
+        // CHAT FLOW
+        // =========================================================================
+
+        function sendChat() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            socket.emit('send_chat', { text });
+            appendMessage(myEmail, "Anda", text, "self");
+            input.value = "";
+        }
+
+        // Mendengarkan pesan broadcast dari TCP server yang di-relay Flask
+        socket.on('server_message', (msg) => {
+            const mtype = msg.type;
+            if (mtype === "CHAT") {
+                appendMessage(msg.from, msg.from, msg.text, "other");
+            } else if (mtype === "SYSTEM") {
+                appendMessage("SYSTEM", "Sistem", msg.text, "system");
+            } else if (mtype === "ERROR") {
+                appendMessage("ERROR", "Error", msg.text, "error");
+            } else if (mtype === "FILE_META") {
+                appendMessage("SYSTEM", "Sistem", `[FILE] Menerima file '${msg.filename}' dari ${msg.from} (${msg.size} bytes)...`, "system");
+            } else if (mtype === "FILE_END") {
+                const filename = msg.filename;
+                const isImage = filename.toLowerCase().endsWith('.png') ||
+                    filename.toLowerCase().endsWith('.jpg') ||
+                    filename.toLowerCase().endsWith('.jpeg') ||
+                    filename.toLowerCase().endsWith('.gif');
+                let downloadLinkHtml = `<a href="/download/${encodeURIComponent(filename)}" target="_blank" style="color: #10b981; font-weight: bold; text-decoration: underline;">[Unduh ${escapeHtml(filename)}]</a>`;
+                if (isImage) {
+                    downloadLinkHtml += `<br><img src="/download/${encodeURIComponent(filename)}" style="max-width: 200px; max-height: 150px; border-radius: 8px; margin-top: 8px; border: 1px solid var(--border); cursor: pointer;" onclick="window.open(this.src)">`;
+                }
+                appendMessage("SYSTEM", "Sistem", `[FILE] File '${filename}' selesai ditransfer. ${downloadLinkHtml}`, "system");
+                refreshServerFiles();
+            } else if (mtype === "VIDEO_FRAME") {
+                if (activeStreamSender !== msg.from) {
+                    userClosedPopup = false;
+                    activeStreamSender = msg.from;
+                }
+                if (userClosedPopup) return;
+
+                // Tampilkan frame video
+                const popup = document.getElementById('stream-popup');
+                const img = document.getElementById('video-display');
+                document.getElementById('stream-title').innerText = `Stream dari ${msg.from}`;
+
+                popup.style.display = "flex";
+                img.src = `data:image/jpeg;base64,${msg.data_b64}`;
+            } else if (mtype === "STREAM_STOP") {
+                // Sembunyikan window stream
+                closeStreamPopup(false);
+                userClosedPopup = false;
+                activeStreamSender = null;
+                appendMessage("SYSTEM", "Sistem", `Streaming video dari ${msg.from} telah selesai/berhenti.`, "system");
+            } else if (mtype === "LIST_VIDEOS_RESP") {
+                const select = document.getElementById('server-video-name');
+                select.innerHTML = '';
+                const videos = msg.videos || [];
+                if (videos.length === 0) {
+                    const opt = document.createElement('option');
+                    opt.value = '';
+                    opt.innerText = 'Tidak ada video di server';
+                    select.appendChild(opt);
+                } else {
+                    videos.forEach(v => {
+                        const opt = document.createElement('option');
+                        opt.value = v;
+                        opt.innerText = v;
+                        select.appendChild(opt);
+                    });
+                }
+            } else if (mtype === "LIST_FILES_RESP") {
+                const container = document.getElementById('server-files-list');
+                container.innerHTML = '';
+                const files = msg.files || [];
+                if (files.length === 0) {
+                    container.innerHTML = '<span style="color: var(--text-muted); font-size: 0.85rem; text-align: center; width: 100%;">Tidak ada file di server</span>';
+                } else {
+                    files.forEach(f => {
+                        const item = document.createElement('div');
+                        item.style.display = 'flex';
+                        item.style.justifyContent = 'space-between';
+                        item.style.alignItems = 'center';
+                        item.style.padding = '6px 10px';
+                        item.style.background = 'rgba(255,255,255,0.03)';
+                        item.style.borderRadius = '6px';
+                        item.style.border = '1px solid var(--border)';
+
+                        const sizeKB = (f.size / 1024).toFixed(1);
+                        item.innerHTML = `
+                            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; text-align: left;">
+                                <div style="font-weight: 500; font-size: 0.8rem; color: var(--text-main);">${escapeHtml(f.filename)}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">${sizeKB} KB</div>
+                            </div>
+                            <a href="/download/${encodeURIComponent(f.filename)}" target="_blank" style="padding: 3px 6px; background: var(--primary); color: white; border-radius: 4px; font-size: 0.7rem; text-decoration: none; font-weight: 600;">Unduh</a>
+                        `;
+                        container.appendChild(item);
+                    });
+                }
+            }
+        });
+
+        function appendMessage(senderId, senderName, text, typeClass) {
+            const box = document.getElementById('chat-box');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `chat-message ${typeClass}`;
+
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+
+            if (typeClass !== "system" && typeClass !== "error") {
+                msgDiv.innerHTML = `
+                    <div class="chat-msg-header">
+                        <span class="chat-msg-sender ${typeClass}">${senderName}</span>
+                        <span>${timeStr}</span>
+                    </div>
+                    <div>${escapeHtml(text)}</div>
+                `;
+            } else {
+                msgDiv.innerHTML = `<div>[${timeStr}] ${escapeHtml(text)}</div>`;
+            }
+
+            box.appendChild(msgDiv);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // =========================================================================
+        // FILE TRANSFER (CHUNKING DI BROWSER)
+        // =========================================================================
+
+        function handleFileSelected(input) {
+            if (input.files && input.files[0]) {
+                selectedFile = input.files[0];
+                document.getElementById('file-label').innerText = `${selectedFile.name} (${selectedFile.size} bytes)`;
+            }
+        }
+
+        function uploadFile() {
+            if (!selectedFile) {
+                alert("Pilih file terlebih dahulu!");
+                return;
+            }
+
+            const target = 'all';
+            const btn = document.getElementById('btn-upload');
+
+            btn.disabled = true;
+            btn.innerText = "Mengirim...";
+            updateProgress("Mengirim file...", 0);
+
+            // Kirim Metadata
+            socket.emit('send_file_meta', {
+                filename: selectedFile.name,
+                size: selectedFile.size,
+                target: target
+            });
+
+            let offset = 0;
+            const reader = new FileReader();
+
+            // Loop rekursif membaca chunk & mengirimkannya
+            function readNextChunk() {
+                const slice = selectedFile.slice(offset, offset + CHUNK_SIZE);
+                reader.onload = function (e) {
+                    const arrayBuffer = e.target.result;
+                    // Konversi ArrayBuffer ke base64
+                    const base64Data = arrayBufferToBase64(arrayBuffer);
+
+                    socket.emit('send_file_chunk', {
+                        filename: selectedFile.name,
+                        data_b64: base64Data,
+                        target: target
+                    });
+
+                    offset += CHUNK_SIZE;
+                    const percent = Math.min((offset / selectedFile.size) * 100, 100);
+                    updateProgress(`Kirim File: ${selectedFile.name}`, percent);
+
+                    if (offset < selectedFile.size) {
+                        readNextChunk();
+                    } else {
+                        // Kirim sinyal selesai
+                        socket.emit('send_file_end', {
+                            filename: selectedFile.name,
+                            target: target
+                        });
+                        updateProgress("Status: File berhasil dikirim! (Idle)", 0);
+                        btn.disabled = false;
+                        btn.innerText = "Kirim File";
+                        document.getElementById('file-label').innerText = "Klik untuk memilih file...";
+                        selectedFile = null;
+                        setTimeout(refreshServerFiles, 500);
+                    }
+                };
+                reader.readAsArrayBuffer(slice);
+            }
+
+            readNextChunk();
+        }
+
+
+
+        // =========================================================================
+        // SERVER VIDEO STREAM REQUESTS
+        // =========================================================================
+
+        function requestServerStream() {
+            const videoName = document.getElementById('server-video-name').value.trim();
+            if (!videoName) {
+                alert("Masukkan nama video server!");
+                return;
+            }
+            userClosedPopup = false;
+            activeStreamSender = "SERVER";
+            socket.emit('request_server_stream', { filename: videoName });
+            appendMessage("SYSTEM", "Sistem", `Meminta streaming video '${videoName}' dari server...`, "system");
+        }
+
+
+
+        function refreshServerVideos() {
+            const select = document.getElementById('server-video-name');
+            select.innerHTML = '<option value="">Loading video list...</option>';
+            socket.emit('get_server_videos');
+        }
+
+        function refreshServerFiles() {
+            const container = document.getElementById('server-files-list');
+            container.innerHTML = '<span style="color: var(--text-muted); font-size: 0.85rem; text-align: center; width: 100%;">Loading file list...</span>';
+            socket.emit('get_server_files');
+        }
+
+        // =========================================================================
+        // HELPERS & UI UPDATES
+        // =========================================================================
+
+        function closeStreamPopup(explicit = false) {
+            document.getElementById('stream-popup').style.display = "none";
+            document.getElementById('video-display').src = "";
+            if (explicit) {
+                userClosedPopup = true;
+                socket.emit('stop_server_stream');
+            }
+        }
+
+        function updateProgress(statusText, percent) {
+            document.getElementById('progress-status').innerText = statusText;
+            document.getElementById('progress-percent').innerText = `${Math.round(percent)}%`;
+            document.getElementById('progress-fill').style.width = `${percent}%`;
+        }
+
+        function showLog(text, className) {
+            const log = document.getElementById('login-log');
+            log.innerText = text;
+            log.className = `status-msg ${className}`;
+        }
+
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function (m) { return map[m]; });
+        }
+    </script>
+</body>
+
+</html>

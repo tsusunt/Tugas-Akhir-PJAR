@@ -1,0 +1,32 @@
+{
+    "hafidzxs@gmail.com": {
+        "password_hash": "5c9499e57d9fbf044d2ee82be2b09ff7d934789c812e213ba48e0552a80c56f2",
+        "salt": "fe56cda879588374b8734efb075e25b2",
+        "is_verified": false
+    },
+    "hafidzxd@gmail.com": {
+        "password_hash": "4ea52f4dced2c13078adadc972d499b4bfe79bc84359363fa4e0c32a6ac8282a",
+        "salt": "b29b304842b06fec0e912d1fa1b34993",
+        "is_verified": true
+    },
+    "aryogeforce@gmail.com": {
+        "password_hash": "f588c372fd858b125dfda7a32006e9eb8a16805426ba35de6736290c1b27da53",
+        "salt": "705a4f2dac03a3e9be393e8f8a8fb0b4",
+        "is_verified": true
+    },
+    "hafidzalfiansyah96@gmial.com": {
+        "password_hash": "fc6bbebf6e9610fb26f306506f04ab6472493560d89a81c04f9167bb717ce77a",
+        "salt": "a19c558e8dc769d7130a3eed1db32e9b",
+        "is_verified": false
+    },
+    "hafidzalfiansyah96@gmail.com": {
+        "password_hash": "a419d075d0b3d96a2db3242ed4122440cd15c6280e18b52e35edb9146584ad8a",
+        "salt": "0750756e8c77fc9e179ec45f6e9b5642",
+        "is_verified": true
+    },
+    "takasyah1@gmail.com": {
+        "password_hash": "518f8ca57eec37c160f97b3ee624fb3da90ed71e01ec507010829788715771ee",
+        "salt": "99382e77937fb9303f17d8329bdd09a2",
+        "is_verified": true
+    }
+}
